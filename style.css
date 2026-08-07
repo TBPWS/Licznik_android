@@ -1,0 +1,147 @@
+body {
+  font-family: Arial;
+  background: #0f0f0f;
+  color: #fff;
+  margin: 0;
+  padding: 10px;
+}
+
+/* Zakładki */
+#tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  background: #1c1c1c;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #444;
+}
+
+/* Lista graczy */
+.player-list {
+  background: #111;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.player-list-item {
+  padding: 6px 0;
+  font-size: 16px;
+  border-bottom: 1px solid #333;
+}
+
+.player-list-item:last-child {
+  border-bottom: none;
+}
+
+/* Kolorowanie TOP 3 */
+.player-list-item.top1 {
+  background: linear-gradient(90deg, #ffd70033, #ffd70011);
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.player-list-item.top2 {
+  background: linear-gradient(90deg, #c0c0c033, #c0c0c011);
+  color: #c0c0c0;
+  font-weight: bold;
+}
+
+.player-list-item.top3 {
+  background: linear-gradient(90deg, #cd7f3233, #cd7f3211);
+  color: #cd7f32;
+  font-weight: bold;
+}
+
+/* Karty graczy */
+.player-card {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.4);
+}
+
+.player-name {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.player-stats {
+  font-size: 16px;
+  margin-bottom: 15px;
+}
+
+/* Siatka ikon */
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 12px;
+}
+
+/* Heksagon */
+.hex {
+  width: 90px;
+  height: 50px;
+  background: #333;
+  position: relative;
+  margin: 20px auto 0;
+  text-align: center;
+  line-height: 50px;
+  font-weight: bold;
+  color: #fff;
+  border-radius: 6px;
+}
+
+.hex:before,
+.hex:after {
+  content: "";
+  position: absolute;
+  width: 0;
+  border-left: 45px solid transparent;
+  border-right: 45px solid transparent;
+}
+
+.hex:before {
+  bottom: 100%;
+  border-bottom: 25px solid #333;
+}
+
+.hex:after {
+  top: 100%;
+  border-top: 25px solid #333;
+}
+
+/* Kolory */
+.hex.crypt { background: #1e3c72; }
+.hex.crypt:before { border-bottom-color: #1e3c72; }
+.hex.crypt:after { border-top-color: #1e3c72; }
+
+.hex.rare { background: #8e2de2; }
+.hex.rare:before { border-bottom-color: #8e2de2; }
+.hex.rare:after { border-top-color: #8e2de2; }
+
+.hex.vault { background: #0f9b0f; }
+.hex.vault:before { border-bottom-color: #0f9b0f; }
+.hex.vault:after { border-top-color: #0f9b0f; }
+
+.hex.hermes { background: #ff8c00; }
+.hex.hermes:before { border-bottom-color: #ff8c00; }
+.hex.hermes:after { border-top-color: #ff8c00; }
+
+.hex.ancients { background: #c0392b; }
+.hex.ancients:before { border-bottom-color: #c0392b; }
+.hex.ancients:after { border-top-color: #c0392b; }
