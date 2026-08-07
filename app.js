@@ -67,7 +67,7 @@ function showTab(name, rows) {
   const listDiv = document.createElement("div");
   listDiv.className = "player-list";
 
-  const sortedRows = rows.slice(1).sort((a, b) => b[1] - a[1]);
+  const sortedRows = rows.slice(1).sort((a, b) => b[3] - a[3]);
 
   sortedRows.forEach((row, index) => {
     const name = row[0];
