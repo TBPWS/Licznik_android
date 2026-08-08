@@ -13,39 +13,14 @@ function updateTimestamp() {
 }
 
 function loadData() {
-  const url =
-    "https://docs.google.com/spreadsheets/d/1OmkKHiEm0jA9nhygs3UV8yOkhDYt3EntSV4YZf-zf8U/gviz/tq?tqx=out:json";
-
-  fetch(url)
-    .then(r => r.text())
-    .then(text => {
-      // Google Sheets zwraca JS, nie czysty JSON → trzeba wyciąć
-      const json = JSON.parse(text.substring(47, text.length - 2));
-
-      // Konwersja Google → rows[]
-      const rows = json.table.rows.map(r =>
-        r.c.map(cell => (cell ? cell.v : ""))
-      );
-
-      // Pierwszy wiersz to nagłówki
-      const headers = rows[0];
-
-      // Reszta to dane
-      const dataRows = rows.slice(1);
-
-      // Twój format danych
-      const data = {
-        "Podsumowanie": [headers, ...dataRows]
-      };
-
+  fetch("https://raw.githubusercontent.com/TBPWS/Licznik_v1.1/main/data.json")
+    .then(r => r.json())
+    .then(data => {
       renderTabs(data);
       updateTimestamp();
     })
-    .catch(err => {
-      console.error("Błąd pobierania danych z Google Sheets:", err);
-    });
+    .catch(console.error);
 }
-
 
 function renderTabs(data) {
   const tabs = document.getElementById("tabs");
@@ -58,7 +33,6 @@ function renderTabs(data) {
     name => name !== "Dane" && name !== "Ranking Historia"
   );
 
-  // Dodajemy zakładkę LEGENDA
   sheetNames.push("Legenda");
 
   sheetNames.forEach(name => {
@@ -113,17 +87,15 @@ function showTab(name, rows) {
     return;
   }
 
-  // --- LISTA GRACZY (sortowanie po punktach) ---
-  const listDiv = document.createElement("div");
-  listDiv.className = "player-list";
+  // --- LISTA GRACZY ---
+  const headers = rows[0];
 
   const sortedRows = rows.slice(1).sort((a, b) => Number(b[2]) - Number(a[2]));
 
-  sortedRows.forEach((row, index) => {
-    const name = row[0];
-    const razem = row[1];
-    const punkty = row[2];
+  const listDiv = document.createElement("div");
+  listDiv.className = "player-list";
 
+  sortedRows.forEach((row, index) => {
     const item = document.createElement("div");
     item.className = "player-list-item";
 
@@ -131,30 +103,24 @@ function showTab(name, rows) {
     if (index === 1) item.classList.add("top2");
     if (index === 2) item.classList.add("top3");
 
-    item.textContent = `${name} — ${razem} — ${punkty}`;
+    item.textContent = `${row[0]} — ${row[1]} — ${row[2]}`;
     listDiv.appendChild(item);
   });
 
   content.appendChild(listDiv);
 
   // --- KARTY GRACZY ---
-  const headers = rows[0];
-
   rows.slice(1).forEach(row => {
     const card = document.createElement("div");
     card.className = "player-card";
 
-    const playerName = row[0];
-    const razem = row[1];
-    const punkty = row[2];
-
     const headerDiv = document.createElement("div");
     headerDiv.className = "player-name";
-    headerDiv.textContent = playerName;
+    headerDiv.textContent = row[0];
 
     const statsDiv = document.createElement("div");
     statsDiv.className = "player-stats";
-    statsDiv.innerHTML = `Razem: ${razem}<br>Punkty: ${punkty}`;
+    statsDiv.innerHTML = `Razem: ${row[1]}<br>Punkty: ${row[2]}`;
 
     const grid = document.createElement("div");
     grid.className = "icon-grid";
@@ -163,15 +129,7 @@ function showTab(name, rows) {
       if (i < 3) return;
 
       const value = row[i];
-
       if (!value || Number(value) === 0) return;
-
-      let type = "";
-      if (header.includes("rare")) type = "rare";
-      else if (header.includes("Crypt")) type = "crypt";
-      else if (header.includes("Vault")) type = "vault";
-      else if (header.includes("Hermes")) type = "hermes";
-      else if (header.includes("Ancients")) type = "ancients";
 
       const short = header
         .replace("Crypt__", "C")
@@ -181,7 +139,7 @@ function showTab(name, rows) {
         .replace("Ancients", "A");
 
       const box = document.createElement("div");
-      box.className = "box " + type;
+      box.className = "box";
 
       box.innerHTML = `
         <span class="box-label">${short}</span>
