@@ -116,13 +116,6 @@ body {
   font-size: 20px;
 }
 
-/* Kolory typów */
-.box.crypt { border-color: #1e3c72; }
-.box.rare { border-color: #8e2de2; }
-.box.vault { border-color: #0f9b0f; }
-.box.hermes { border-color: #ff8c00; }
-.box.ancients { border-color: #c0392b; }
-
 /* Legenda */
 .legend {
   background: #1a1a1a;
