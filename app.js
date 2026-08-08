@@ -131,6 +131,13 @@ function showTab(name, rows) {
       const value = row[i];
       if (!value || Number(value) === 0) return;
 
+      let type = "";
+      if (header.includes("rare")) type = "rare";
+      else if (header.includes("Crypt")) type = "crypt";
+      else if (header.includes("Vault")) type = "vault";
+      else if (header.includes("Hermes")) type = "hermes";
+      else if (header.includes("Ancients")) type = "ancients";
+
       const short = header
         .replace("Crypt__", "C")
         .replace("rare Crypt__", "RC")
@@ -139,7 +146,7 @@ function showTab(name, rows) {
         .replace("Ancients", "A");
 
       const box = document.createElement("div");
-      box.className = "box";
+      box.className = "box " + type;
 
       box.innerHTML = `
         <span class="box-label">${short}</span>
