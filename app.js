@@ -63,11 +63,11 @@ function showTab(name, rows) {
 
   const headers = rows[0];
 
-  // --- LISTA GRACZY (Nazwa / Razem / Punkty) + TOP 3 ---
+  // --- LISTA GRACZY (sortowanie po punktach) ---
   const listDiv = document.createElement("div");
   listDiv.className = "player-list";
 
-  const sortedRows = rows.slice(1).sort((a, b) => b[3] - a[3]);
+  const sortedRows = rows.slice(1).sort((a, b) => Number(b[2]) - Number(a[2]));
 
   sortedRows.forEach((row, index) => {
     const name = row[0];
@@ -87,7 +87,7 @@ function showTab(name, rows) {
 
   content.appendChild(listDiv);
 
-  // --- KARTY GRACZY (HEKSAGONY) ---
+  // --- KARTY GRACZY (PROSTOKĄTY + IKONY) ---
   rows.slice(1).forEach(row => {
     const card = document.createElement("div");
     card.className = "player-card";
@@ -111,7 +111,9 @@ function showTab(name, rows) {
       if (i < 3) return;
 
       const value = row[i];
-      const hex = document.createElement("div");
+
+      // 🔥 ukrywanie skrzyń o wartości 0
+      if (!value || Number(value) === 0) return;
 
       let type = "";
       if (header.includes("rare")) type = "rare";
@@ -120,11 +122,15 @@ function showTab(name, rows) {
       else if (header.includes("Hermes")) type = "hermes";
       else if (header.includes("Ancients")) type = "ancients";
 
-      hex.className = "hex " + type;
-      hex.textContent = value;
-      hex.title = header;
+      const box = document.createElement("div");
+      box.className = "box " + type;
 
-      grid.appendChild(hex);
+      box.innerHTML = `
+        <img src="assets/icons/${type}.png">
+        <span>${value}</span>
+      `;
+
+      grid.appendChild(box);
     });
 
     card.appendChild(headerDiv);
