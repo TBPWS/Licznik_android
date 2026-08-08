@@ -85,14 +85,14 @@ body {
   margin-bottom: 15px;
 }
 
-/* Siatka ikon */
+/* Siatka skrzyń */
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 12px;
 }
 
-/* PROSTOKĄTY Z IKONAMI */
+/* Prostokąty */
 .box {
   background: #1c1c1c;
   border: 2px solid #333;
@@ -100,15 +100,20 @@ body {
   padding: 8px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
   font-size: 18px;
   font-weight: bold;
   color: #fff;
+  margin: 6px;
 }
 
-.box img {
-  width: 32px;
-  height: 32px;
+.box-label {
+  font-size: 16px;
+  opacity: 0.85;
+}
+
+.box-value {
+  font-size: 20px;
 }
 
 /* Kolory typów */
@@ -117,3 +122,20 @@ body {
 .box.vault { border-color: #0f9b0f; }
 .box.hermes { border-color: #ff8c00; }
 .box.ancients { border-color: #c0392b; }
+
+/* Legenda */
+.legend {
+  background: #1a1a1a;
+  padding: 15px;
+  border-radius: 12px;
+  font-size: 18px;
+}
+
+.legend-item {
+  padding: 6px 0;
+  border-bottom: 1px solid #333;
+}
+
+.legend-item:last-child {
+  border-bottom: none;
+}
