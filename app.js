@@ -13,14 +13,39 @@ function updateTimestamp() {
 }
 
 function loadData() {
-  fetch("https://raw.githubusercontent.com/TBPWS/Licznik_v1.1/main/data.json")
-    .then(r => r.json())
-    .then(data => {
+  const url =
+    "https://docs.google.com/spreadsheets/d/1OmkKHiEm0jA9nhygs3UV8yOkhDYt3EntSV4YZf-zf8U/gviz/tq?tqx=out:json";
+
+  fetch(url)
+    .then(r => r.text())
+    .then(text => {
+      // Google Sheets zwraca JS, nie czysty JSON → trzeba wyciąć
+      const json = JSON.parse(text.substring(47, text.length - 2));
+
+      // Konwersja Google → rows[]
+      const rows = json.table.rows.map(r =>
+        r.c.map(cell => (cell ? cell.v : ""))
+      );
+
+      // Pierwszy wiersz to nagłówki
+      const headers = rows[0];
+
+      // Reszta to dane
+      const dataRows = rows.slice(1);
+
+      // Twój format danych
+      const data = {
+        "Podsumowanie": [headers, ...dataRows]
+      };
+
       renderTabs(data);
       updateTimestamp();
     })
-    .catch(console.error);
+    .catch(err => {
+      console.error("Błąd pobierania danych z Google Sheets:", err);
+    });
 }
+
 
 function renderTabs(data) {
   const tabs = document.getElementById("tabs");
