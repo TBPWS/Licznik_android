@@ -36,7 +36,7 @@ function parseCSV(text) {
 }
 
 function loadData() {
-  if (URL_PODSUMOWANIE.includes("https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv") || URL_RANKING.includes("https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv")) {
+  if (URL_PODSUMOWANIE.includes("TUTAJ_WKLEJ") || URL_RANKING.includes("TUTAJ_WKLEJ")) {
     const content = document.getElementById("content");
     if (content) {
       content.innerHTML = `<div style="color: #ff8c00; padding: 20px; background: #1c1c1c; border-radius: 8px;">
