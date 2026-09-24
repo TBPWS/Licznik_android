@@ -1,34 +1,26 @@
 // === KONFIGURACJA LINKÓW Z ARKUSZA GOOGLE ============================
-const URL_PODSUMOWANIE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv";
-const URL_RANKING = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv";
-// TUTAJ WKLEJ SWÓJ LINK DLA PUNKTACJI:
-const URL_PUNKTACJA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=2121037205&single=true&output=csv";
+const LINKS = {
+  "Podsumowanie": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv",
+  "Ranking": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv",
+  "Punktacja": "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=2121037205&single=true&output=csv" // Wklej link lub zostaw puste, jeśli nie działa
+};
 // =====================================================================
 
 let refreshInterval = null;
-let globalData = {
-  "Podsumowanie": [],
-  "Ranking": [],
-  "Punktacja": [],
-  "Legenda": []
-};
+let currentTab = "Podsumowanie";
 
 function updateTimestamp() {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2, "0");
   const mm = String(now.getMinutes()).padStart(2, "0");
   const ss = String(now.getSeconds()).padStart(2, "0");
-
   const el = document.getElementById("lastUpdate");
-  if (el) {
-    el.textContent = "Ostatnia aktualizacja: " + hh + ":" + mm + ":" + ss;
-  }
+  if (el) el.textContent = "Ostatnia aktualizacja: " + hh + ":" + mm + ":" + ss;
 }
 
 function parseCSV(text) {
   if (!text) return [];
-  const lines = text.split(/\r?\n/);
-  return lines
+  return text.split(/\r?\n/)
     .map(line => {
       if (!line.trim()) return null;
       const delimiter = line.includes(";") ? ";" : ",";
@@ -37,223 +29,192 @@ function parseCSV(text) {
     .filter(row => row !== null);
 }
 
-function loadData() {
-  if (URL_PUNKTACJA.includes("TUTAJ_WKLEJ")) {
-    const content = document.getElementById("content");
-    if (content) {
-      content.innerHTML = `<div style="color: #ff8c00; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-        <strong>Konfiguracja wymagana:</strong> Wklej wygenerowany link CSV dla Punktacji w pliku app.js!
-      </div>`;
-    }
+// Główna funkcja ładująca wybraną kartę niezależnie od innych
+function loadTabContent(tabName) {
+  const content = document.getElementById("content");
+  if (!content) return;
+
+  // Obsługa samej Legendy (nie potrzebuje sieci)
+  if (tabName === "Legenda") {
+    renderLegenda();
+    updateTimestamp();
     return;
   }
 
-  Promise.all([
-    fetch(URL_PODSUMOWANIE).then(r => { if (!r.ok) throw new Error("Błąd Podsumowania"); return r.text(); }),
-    fetch(URL_RANKING).then(r => { if (!r.ok) throw new Error("Błąd zakładki Ranking"); return r.text(); }),
-    fetch(URL_PUNKTACJA).then(r => { if (!r.ok) throw new Error("Błąd zakładki Punktacja"); return r.text(); })
-  ])
-  .then(([csvPodsumowanie, csvRanking, csvPunktacja]) => {
-    globalData["Podsumowanie"] = parseCSV(csvPodsumowanie);
-    globalData["Ranking"] = parseCSV(csvRanking);
-    globalData["Punktacja"] = parseCSV(csvPunktacja);
+  const url = LINKS[tabName];
+  if (!url || url.includes("TUTAJ_WKLEJ")) {
+    content.innerHTML = `<div style="color: #ff8c00; padding: 20px; background: #1c1c1c; border-radius: 8px;">
+      Zakładka "${tabName}" nie została jeszcze skonfigurowana w pliku app.js.
+    </div>`;
+    return;
+  }
 
-    renderTabs();
-    updateTimestamp();
-  })
-  .catch(error => {
-    console.error(error);
-    const content = document.getElementById("content");
-    if (content) {
+  content.innerHTML = `<div style="color: #aaa; padding: 20px;">Ładowanie danych z Arkusza Google...</div>`;
+
+  fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error("Status: " + r.status);
+      return r.text();
+    })
+    .then(csvText => {
+      const rows = parseCSV(csvText);
+      if (tabName === "Podsumowanie") renderPodsumowanie(rows);
+      else if (tabName === "Ranking") renderRanking(rows);
+      else if (tabName === "Punktacja") renderPunktacja(rows);
+      updateTimestamp();
+    })
+    .catch(error => {
+      console.error(error);
       content.innerHTML = `<div style="color: #ff3333; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-        Błąd ładowania danych! Sprawdź poprawność linków i publikacji w sieci.<br>
+        Błąd pobierania zakładki "${tabName}". Sprawdź czy opublikowano ją jako CSV.<br>
         <small style="color: #aaa;">Szczegóły: ${error.message}</small>
       </div>`;
-    }
-  });
+    });
 }
 
 function renderTabs() {
   const tabs = document.getElementById("tabs");
-  const activeTabBtn = document.querySelector(".tab-btn.active");
-  const activeTabName = activeTabBtn ? activeTabBtn.dataset.name : "Podsumowanie";
-
+  if (!tabs) return;
   tabs.innerHTML = "";
+
   const tabsList = ["Podsumowanie", "Ranking", "Punktacja", "Legenda"];
 
   tabsList.forEach(name => {
     const btn = document.createElement("button");
-    btn.className = "tab-btn";
+    btn.className = "tab-btn" + (name === currentTab ? " active" : "");
     btn.textContent = name;
-    btn.dataset.name = name;
-    
-    if (name === activeTabName) btn.classList.add("active");
-
     btn.addEventListener("click", () => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      showTab(name, globalData[name]);
+      currentTab = name;
+      loadTabContent(name);
     });
     tabs.appendChild(btn);
   });
-
-  const currentActiveBtn = document.querySelector(`.tab-btn[data-name="${activeTabName}"]`);
-  if (currentActiveBtn) {
-    showTab(activeTabName, globalData[activeTabName]);
-  }
 }
 
-function showTab(name, rows) {
+// --- WIDOK: LEGENDA ---
+function renderLegenda() {
   const content = document.getElementById("content");
-  content.innerHTML = "";
+  const legend = document.createElement("div");
+  legend.className = "legend";
+  const items = [
+    ["C5", "Crypt__5"], ["C10", "Crypt__10"], ["C15", "Crypt__15"],
+    ["C20", "Crypt__20"], ["C25", "Crypt__25"], ["RC10", "rare Crypt__10"],
+    ["RC15", "rare Crypt__15"], ["RC20", "rare Crypt__20"], ["RC25", "rare Crypt__25"],
+    ["V", "Vault"], ["H", "Hermes"], ["A", "Ancients"]
+  ];
+  items.forEach(([short, full]) => {
+    const div = document.createElement("div");
+    div.className = "legend-item";
+    div.textContent = `${short} — ${full}`;
+    legend.appendChild(div);
+  });
+  content.appendChild(legend);
+}
 
-  // --- 1. LEGENDA ---
-  if (name === "Legenda") {
-    const legend = document.createElement("div");
-    legend.className = "legend";
-
-    const items = [
-      ["C5", "Crypt__5"], ["C10", "Crypt__10"], ["C15", "Crypt__15"],
-      ["C20", "Crypt__20"], ["C25", "Crypt__25"], ["RC10", "rare Crypt__10"],
-      ["RC15", "rare Crypt__15"], ["RC20", "rare Crypt__20"], ["RC25", "rare Crypt__25"],
-      ["V", "Vault"], ["H", "Hermes"], ["A", "Ancients"]
-    ];
-
-    items.forEach(([short, full]) => {
-      const div = document.createElement("div");
-      div.className = "legend-item";
-      div.textContent = `${short} — ${full}`;
-      legend.appendChild(div);
-    });
-
-    content.appendChild(legend);
-    return;
+// --- WIDOK: RANKING ---
+function renderRanking(rows) {
+  const content = document.getElementById("content");
+  let headerIndex = -1;
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i] && rows[i].includes("Gracz")) { headerIndex = i; break; }
   }
+  if (headerIndex === -1) headerIndex = 0;
+  const dataRows = rows.slice(headerIndex + 1).filter(r => r && r[2]); 
 
-  if (!rows || rows.length === 0) return;
+  const listDiv = document.createElement("div");
+  listDiv.className = "player-list";
 
-  // --- 2. ZAKŁADKA: PUNKTACJA ---
-  if (name === "Punktacja") {
-    const mainContainer = document.createElement("div");
-    mainContainer.style.display = "flex";
-    mainContainer.style.flexWrap = "wrap";
-    mainContainer.style.gap = "20px";
+  dataRows.forEach((row) => {
+    const item = document.createElement("div");
+    item.className = "player-list-item";
+    const miejsce = row[0] || "";
+    const medal = row[1] || "";
+    const gracz = row[2] || "";
+    const poziom = row[3] || "";
+    const punkty = row[4] || "0";
+    const norma = row[5] || "0";
+    const razem = row[6] || "0";
 
-    const normDiv = document.createElement("div");
-    normDiv.className = "player-list";
-    normDiv.style.flex = "1 1 300px";
-    normDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#ffd700; border-bottom:1px solid #444; padding-bottom:5px;">Normy Punktów</div>`;
+    if (miejsce == "1") item.classList.add("top1");
+    if (miejsce == "2") item.classList.add("top2");
+    if (miejsce == "3") item.classList.add("top3");
 
-    const chestDiv = document.createElement("div");
-    chestDiv.className = "player-list";
-    chestDiv.style.flex = "1 1 350px";
-    chestDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#8e2de2; border-bottom:1px solid #444; padding-bottom:5px;">Punkty za skrzynie</div>`;
+    item.textContent = `${miejsce}. ${medal} ${gracz} (${poziom}) — Punkty: ${punkty} — Norma: ${norma}% — Skrzynie: ${razem}`;
+    listDiv.appendChild(item);
+  });
+  content.appendChild(listDiv);
+}
 
-    let sekcjaSkrzyn = false;
+// --- WIDOK: PUNKTACJA ---
+function renderPunktacja(rows) {
+  const content = document.getElementById("content");
+  const mainContainer = document.createElement("div");
+  mainContainer.style.display = "flex";
+  mainContainer.style.flexWrap = "wrap";
+  mainContainer.style.gap = "20px";
 
-    rows.forEach(row => {
-      if (!row || row.length === 0 || !row[0]) return;
-      
-      const col1 = row[0].trim();
-      const col2 = row[1] ? row[1].trim() : "";
+  const normDiv = document.createElement("div");
+  normDiv.className = "player-list";
+  normDiv.style.flex = "1 1 300px";
+  normDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#ffd700; border-bottom:1px solid #444; padding-bottom:5px;">Normy Punktów</div>`;
 
-      if (col1.toLowerCase().includes("chest type")) {
-        sekcjaSkrzyn = true;
-        return;
-      }
-      if (col1.toLowerCase().includes("normy punktów")) {
-        sekcjaSkrzyn = false;
-        return;
-      }
-      if (col1.toLowerCase() === "points" || col1.toLowerCase().includes("normy")) return;
+  const chestDiv = document.createElement("div");
+  chestDiv.className = "player-list";
+  chestDiv.style.flex = "1 1 350px";
+  chestDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#8e2de2; border-bottom:1px solid #444; padding-bottom:5px;">Punkty za skrzynie</div>`;
 
-      const item = document.createElement("div");
-      item.className = "player-list-item";
-      item.style.display = "flex";
-      item.style.justifyContent = "space-between";
-      item.innerHTML = `<span>${col1}</span><span style="font-weight:bold; color:#fff;">${col2}</span>`;
+  let sekcjaSkrzyn = false;
 
-      if (sekcjaSkrzyn) {
-        chestDiv.appendChild(item);
-      } else {
-        normDiv.appendChild(item);
-      }
-    });
+  rows.forEach(row => {
+    if (!row || row.length === 0 || !row[0]) return;
+    const col1 = row[0].trim();
+    const col2 = row[1] ? row[1].trim() : "";
 
-    mainContainer.appendChild(normDiv);
-    mainContainer.appendChild(chestDiv);
-    content.appendChild(mainContainer);
-    return;
-  }
+    if (col1.toLowerCase().includes("chest type")) { sekcjaSkrzyn = true; return; }
+    if (col1.toLowerCase().includes("normy punktów")) { sekcjaSkrzyn = false; return; }
+    if (col1.toLowerCase() === "points" || col1.toLowerCase().includes("normy")) return;
 
-  // --- 3. ZAKŁADKA: RANKING ---
-  if (name === "Ranking") {
-    let headerIndex = -1;
-    for (let i = 0; i < rows.length; i++) {
-      if (rows[i] && rows[i].includes("Gracz")) {
-        headerIndex = i;
-        break;
-      }
-    }
+    const item = document.createElement("div");
+    item.className = "player-list-item";
+    item.style.display = "flex";
+    item.style.justifyContent = "space-between";
+    item.innerHTML = `<span>${col1}</span><span style="font-weight:bold; color:#fff;">${col2}</span>`;
 
-    if (headerIndex === -1) headerIndex = 0;
-    const dataRows = rows.slice(headerIndex + 1).filter(r => r && r[2]); 
+    if (sekcjaSkrzyn) chestDiv.appendChild(item);
+    else normDiv.appendChild(item);
+  });
 
-    const listDiv = document.createElement("div");
-    listDiv.className = "player-list";
+  mainContainer.appendChild(normDiv);
+  mainContainer.appendChild(chestDiv);
+  content.appendChild(mainContainer);
+}
 
-    dataRows.forEach((row) => {
-      if (!row || row.length < 3) return;
-      const item = document.createElement("div");
-      item.className = "player-list-item";
-
-      const miejsce = row[0] || "";
-      const medal = row[1] || "";
-      const gracz = row[2] || "";
-      const poziom = row[3] || "";
-      const punkty = row[4] || "0";
-      const norma = row[5] || "0";
-      const razem = row[6] || "0";
-
-      if (miejsce == "1" || miejsce.includes("1")) item.classList.add("top1");
-      if (miejsce == "2" || miejsce.includes("2")) item.classList.add("top2");
-      if (miejsce == "3" || miejsce.includes("3")) item.classList.add("top3");
-
-      item.textContent = `${miejsce}. ${medal} ${gracz} (${poziom}) — Punkty: ${punkty} — Norma: ${norma}% — Skrzynie: ${razem}`;
-      listDiv.appendChild(item);
-    });
-
-    content.appendChild(listDiv);
-    return;
-  }
-
-  // --- 4. ZAKŁADKA: PODSUMOWANIE ---
+// --- WIDOK: PODSUMOWANIE ---
+function renderPodsumowanie(rows) {
+  const content = document.getElementById("content");
   const headers = rows[0];
   if (!headers) return;
-  
+
   const sortedRows = rows.slice(1).filter(r => r && r[2]).sort((a, b) => Number(b[2] || 0) - Number(a[2] || 0));
 
   const listDiv = document.createElement("div");
   listDiv.className = "player-list";
 
   sortedRows.forEach((row, index) => {
-    if (!row || row.length < 3) return;
     const item = document.createElement("div");
     item.className = "player-list-item";
-
     if (index === 0) item.classList.add("top1");
     if (index === 1) item.classList.add("top2");
     if (index === 2) item.classList.add("top3");
-
-    item.textContent = `${row[0]} — ${row[1] || 0} — ${row[2] || 0}`;
+    item.textContent = `${row[0]} — ${row[1]} — ${row[2]}`;
     listDiv.appendChild(item);
   });
-
   content.appendChild(listDiv);
 
   rows.slice(1).forEach(row => {
-    if (!row || row.length < 3 || !row[0]) return; 
-    
+    if (!row || row.length < 3 || !row[0]) return;
     const card = document.createElement("div");
     card.className = "player-card";
 
@@ -263,14 +224,13 @@ function showTab(name, rows) {
 
     const statsDiv = document.createElement("div");
     statsDiv.className = "player-stats";
-    statsDiv.innerHTML = `Razem: ${row[1] || 0}<br>Punkty: ${row[2] || 0}`;
+    statsDiv.innerHTML = `Razem: ${row[1]}<br>Punkty: ${row[2]}`;
 
     const grid = document.createElement("div");
     grid.className = "icon-grid";
 
     headers.forEach((header, i) => {
       if (i < 3 || !header) return;
-
       const value = row[i];
       if (!value || Number(value) === 0 || isNaN(Number(value))) return;
 
@@ -281,7 +241,28 @@ function showTab(name, rows) {
       else if (header.includes("Hermes")) type = "hermes";
       else if (header.includes("Ancients")) type = "ancients";
 
-      const short = header
-        .replace("Crypt__", "C")
-        .replace("rare Crypt__", "RC")
-        .replace("Vault", "V")
+      const short = header.replace("Crypt__", "C").replace("rare Crypt__", "RC").replace("Vault", "V").replace("Hermes", "H").replace("Ancients", "A");
+
+      const box = document.createElement("div");
+      box.className = "box " + type;
+      box.innerHTML = `<span class="box-label">${short}</span><span class="box-value">${value}</span>`;
+      grid.appendChild(box);
+    });
+
+    card.appendChild(headerDiv);
+    card.appendChild(statsDiv);
+    card.appendChild(grid);
+    content.appendChild(card);
+  });
+}
+
+function startAutoRefresh() {
+  if (refreshInterval) return;
+  refreshInterval = setInterval(() => {
+    if (document.visibilityState === "visible") loadTabContent(currentTab);
+  }, 30000);
+}
+
+renderTabs();
+loadTabContent(currentTab);
+startAutoRefresh();
