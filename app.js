@@ -1,13 +1,15 @@
 // === KONFIGURACJA LINKÓW Z ARKUSZA GOOGLE ============================
-// Wklej tutaj wygenerowane linki CSV dla poszczególnych zakładek:
 const URL_PODSUMOWANIE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv";
 const URL_RANKING = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv";
+// TUTAJ WKLEJ NOWY LINK DLA PUNKTACJI:
+const URL_PUNKTACJA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=2121037205&single=true&output=csv";
 // =====================================================================
 
 let refreshInterval = null;
 let globalData = {
   "Podsumowanie": [],
   "Ranking": [],
+  "Punktacja": [],
   "Legenda": []
 };
 
@@ -23,7 +25,6 @@ function updateTimestamp() {
   }
 }
 
-// Prosty parser CSV uwzględniający przecinki i średniki
 function parseCSV(text) {
   const lines = text.split(/\r?\n/);
   return lines
@@ -36,11 +37,11 @@ function parseCSV(text) {
 }
 
 function loadData() {
-  if (URL_PODSUMOWANIE.includes("TUTAJ_WKLEJ") || URL_RANKING.includes("TUTAJ_WKLEJ")) {
+  if (URL_PUNKTACJA.includes("TUTAJ_WKLEJ")) {
     const content = document.getElementById("content");
     if (content) {
       content.innerHTML = `<div style="color: #ff8c00; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-        <strong>Konfiguracja wymagana:</strong> Uzupełnij oba linki CSV w pliku app.js!
+        <strong>Konfiguracja wymagana:</strong> Wklej wygenerowany link CSV dla Punktacji w pliku app.js!
       </div>`;
     }
     return;
@@ -48,11 +49,13 @@ function loadData() {
 
   Promise.all([
     fetch(URL_PODSUMOWANIE).then(r => { if (!r.ok) throw new Error("Błąd Podsumowania"); return r.text(); }),
-    fetch(URL_RANKING).then(r => { if (!r.ok) throw new Error("Błąd zakładki Ranking"); return r.text(); })
+    fetch(URL_RANKING).then(r => { if (!r.ok) throw new Error("Błąd zakładki Ranking"); return r.text(); }),
+    fetch(URL_PUNKTACJA).then(r => { if (!r.ok) throw new Error("Błąd zakładki Punktacja"); return r.text(); })
   ])
-  .then(([csvPodsumowanie, csvRanking]) => {
+  .then(([csvPodsumowanie, csvRanking, csvPunktacja]) => {
     globalData["Podsumowanie"] = parseCSV(csvPodsumowanie);
     globalData["Ranking"] = parseCSV(csvRanking);
+    globalData["Punktacja"] = parseCSV(csvPunktacja);
 
     renderTabs();
     updateTimestamp();
@@ -62,7 +65,7 @@ function loadData() {
     const content = document.getElementById("content");
     if (content) {
       content.innerHTML = `<div style="color: #ff3333; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-        Błąd ładowania danych! Upewnij się, że oba arkusze są poprawnie opublikowane jako CSV.<br>
+        Błąd ładowania danych! Upewnij się, że wszystkie arkusze są poprawnie opublikowane jako CSV.<br>
         <small style="color: #aaa;">Szczegóły: ${error.message}</small>
       </div>`;
     }
@@ -75,7 +78,7 @@ function renderTabs() {
   const activeTabName = activeTabBtn ? activeTabBtn.dataset.name : "Podsumowanie";
 
   tabs.innerHTML = "";
-  const tabsList = ["Podsumowanie", "Ranking", "Legenda"];
+  const tabsList = ["Podsumowanie", "Ranking", "Punktacja", "Legenda"];
 
   tabsList.forEach(name => {
     const btn = document.createElement("button");
@@ -128,10 +131,67 @@ function showTab(name, rows) {
 
   if (!rows || rows.length === 0) return;
 
-  // --- 2. NOWA ZAKŁADKA: RANKING ---
+  // --- 2. ZAKŁADKA: PUNKTACJA (NOWOŚĆ) ---
+  if (name === "Punktacja") {
+    const mainContainer = document.createElement("div");
+    // Flexbox do wyświetlenia dwóch tabel obok siebie na komputerach i pod sobą na telefonach
+    mainContainer.style.display = "flex";
+    mainContainer.style.flexWrap = "wrap";
+    mainContainer.style.gap = "20px";
+
+    // Tworzenie tabeli dla Norm Punktowych
+    const normDiv = document.createElement("div");
+    normDiv.className = "player-list";
+    normDiv.style.flex = "1 1 300px";
+    normDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#ffd700; border-bottom:1px solid #444; padding-bottom:5px;">Normy Punktów</div>`;
+
+    // Tworzenie tabeli dla Punktów za Skrzynie
+    const chestDiv = document.createElement("div");
+    chestDiv.className = "player-list";
+    chestDiv.style.flex = "1 1 350px";
+    chestDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#8e2de2; border-bottom:1px solid #444; padding-bottom:5px;">Chest Type -> Points</div>`;
+
+    let sekcjaSkrzyn = false;
+
+    rows.forEach(row => {
+      if (!row || row.length === 0 || !row[0]) return;
+      
+      const col1 = row[0].trim();
+      const col2 = row[1] ? row[1].trim() : "";
+
+      // Wykrywanie przełączenia sekcji w pliku CSV
+      if (col1.toLowerCase().includes("chest type")) {
+        sekcjaSkrzyn = true;
+        return;
+      }
+      if (col1.toLowerCase().includes("normy punktów")) {
+        sekcjaSkrzyn = false;
+        return;
+      }
+      if (col1.toLowerCase() === "points") return; // pomin nagłówek kolumny danych
+
+      const item = document.createElement("div");
+      item.className = "player-list-item";
+      item.style.display = "flex";
+      item.style.justifyContent = "space-between";
+      item.innerHTML = `<span>${col1}</span><span style="font-weight:bold; color:#fff;">${col2}</span>`;
+
+      if (sekcjaSkrzyn) {
+        chestDiv.appendChild(item);
+      } else {
+        normDiv.appendChild(item);
+      }
+    });
+
+    mainContainer.appendChild(normDiv);
+    mainContainer.appendChild(chestDiv);
+    content.appendChild(mainContainer);
+    return;
+  }
+
+  // --- 3. ZAKŁADKA: RANKING ---
   if (name === "Ranking") {
-    // Pomijamy pierwszy wiersz tekstowy ("Ranking G9") i szukamy wiersza z nagłówkami
-    let headerIndex = 0;
+    let headerIndex = -1;
     for (let i = 0; i < rows.length; i++) {
       if (rows[i] && rows[i].includes("Gracz")) {
         headerIndex = i;
@@ -139,7 +199,8 @@ function showTab(name, rows) {
       }
     }
 
-    const dataRows = rows.slice(headerIndex + 1).filter(r => r && r[2]); // Filtrujemy wiersze, które mają nazwę gracza
+    if (headerIndex === -1) headerIndex = 0;
+    const dataRows = rows.slice(headerIndex + 1).filter(r => r && r[2]); 
 
     const listDiv = document.createElement("div");
     listDiv.className = "player-list";
@@ -156,10 +217,9 @@ function showTab(name, rows) {
       const norma = row[5] || "0";
       const razem = row[6] || "0";
 
-      // Dodanie klas dla TOP 3 na podstawie miejsca
-      if (miejsce == "1") item.classList.add("top1");
-      if (miejsce == "2") item.classList.add("top2");
-      if (miejsce == "3") item.classList.add("top3");
+      if (miejsce == "1" || miejsce.includes("1")) item.classList.add("top1");
+      if (miejsce == "2" || miejsce.includes("2")) item.classList.add("top2");
+      if (miejsce == "3" || miejsce.includes("3")) item.classList.add("top3");
 
       item.textContent = `${miejsce}. ${medal} ${gracz} (${poziom}) — Punkty: ${punkty} — Norma: ${norma}% — Skrzynie: ${razem}`;
       listDiv.appendChild(item);
@@ -169,7 +229,7 @@ function showTab(name, rows) {
     return;
   }
 
-  // --- 3. ORYGINALNA ZAKŁADKA: PODSUMOWANIE ---
+  // --- 4. ZAKŁADKA: PODSUMOWANIE ---
   const headers = rows[0];
   const sortedRows = rows.slice(1).sort((a, b) => Number(b[2] || 0) - Number(a[2] || 0));
 
@@ -222,50 +282,3 @@ function showTab(name, rows) {
       else if (header.includes("Ancients")) type = "ancients";
 
       const short = header
-        .replace("Crypt__", "C")
-        .replace("rare Crypt__", "RC")
-        .replace("Vault", "V")
-        .replace("Hermes", "H")
-        .replace("Ancients", "A");
-
-      const box = document.createElement("div");
-      box.className = "box " + type;
-      box.innerHTML = `
-        <span class="box-label">${short}</span>
-        <span class="box-value">${value}</span>
-      `;
-      grid.appendChild(box);
-    });
-
-    card.appendChild(headerDiv);
-    card.appendChild(statsDiv);
-    card.appendChild(grid);
-    content.appendChild(card);
-  });
-}
-
-function startAutoRefresh() {
-  if (refreshInterval) return;
-  refreshInterval = setInterval(() => {
-    if (document.visibilityState === "visible") {
-      loadData();
-    }
-  }, 30000);
-}
-
-function stopAutoRefresh() {
-  if (!refreshInterval) return;
-  clearInterval(refreshInterval);
-  refreshInterval = null;
-}
-
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    startAutoRefresh();
-  } else {
-    stopAutoRefresh();
-  }
-});
-
-loadData();
-startAutoRefresh();
