@@ -1,7 +1,7 @@
 // === KONFIGURACJA LINKÓW Z ARKUSZA GOOGLE ============================
 const URL_PODSUMOWANIE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv";
 const URL_RANKING = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv";
-// TUTAJ WKLEJ NOWY LINK DLA PUNKTACJI:
+// TUTAJ WKLEJ SWÓJ LINK DLA PUNKTACJI:
 const URL_PUNKTACJA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=2121037205&single=true&output=csv";
 // =====================================================================
 
@@ -26,12 +26,13 @@ function updateTimestamp() {
 }
 
 function parseCSV(text) {
+  if (!text) return [];
   const lines = text.split(/\r?\n/);
   return lines
     .map(line => {
       if (!line.trim()) return null;
       const delimiter = line.includes(";") ? ";" : ",";
-      return line.split(delimiter).map(cell => cell.replace(/^"|"\$/g, '').trim());
+      return line.split(delimiter).map(cell => cell ? cell.replace(/^"|"\$/g, '').trim() : "");
     })
     .filter(row => row !== null);
 }
@@ -65,7 +66,7 @@ function loadData() {
     const content = document.getElementById("content");
     if (content) {
       content.innerHTML = `<div style="color: #ff3333; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-        Błąd ładowania danych! Upewnij się, że wszystkie arkusze są poprawnie opublikowane jako CSV.<br>
+        Błąd ładowania danych! Sprawdź poprawność linków i publikacji w sieci.<br>
         <small style="color: #aaa;">Szczegóły: ${error.message}</small>
       </div>`;
     }
@@ -131,25 +132,22 @@ function showTab(name, rows) {
 
   if (!rows || rows.length === 0) return;
 
-  // --- 2. ZAKŁADKA: PUNKTACJA (NOWOŚĆ) ---
+  // --- 2. ZAKŁADKA: PUNKTACJA ---
   if (name === "Punktacja") {
     const mainContainer = document.createElement("div");
-    // Flexbox do wyświetlenia dwóch tabel obok siebie na komputerach i pod sobą na telefonach
     mainContainer.style.display = "flex";
     mainContainer.style.flexWrap = "wrap";
     mainContainer.style.gap = "20px";
 
-    // Tworzenie tabeli dla Norm Punktowych
     const normDiv = document.createElement("div");
     normDiv.className = "player-list";
     normDiv.style.flex = "1 1 300px";
     normDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#ffd700; border-bottom:1px solid #444; padding-bottom:5px;">Normy Punktów</div>`;
 
-    // Tworzenie tabeli dla Punktów za Skrzynie
     const chestDiv = document.createElement("div");
     chestDiv.className = "player-list";
     chestDiv.style.flex = "1 1 350px";
-    chestDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#8e2de2; border-bottom:1px solid #444; padding-bottom:5px;">Chest Type -> Points</div>`;
+    chestDiv.innerHTML = `<div style="font-weight:bold; font-size:18px; margin-bottom:10px; color:#8e2de2; border-bottom:1px solid #444; padding-bottom:5px;">Punkty za skrzynie</div>`;
 
     let sekcjaSkrzyn = false;
 
@@ -159,7 +157,6 @@ function showTab(name, rows) {
       const col1 = row[0].trim();
       const col2 = row[1] ? row[1].trim() : "";
 
-      // Wykrywanie przełączenia sekcji w pliku CSV
       if (col1.toLowerCase().includes("chest type")) {
         sekcjaSkrzyn = true;
         return;
@@ -168,7 +165,7 @@ function showTab(name, rows) {
         sekcjaSkrzyn = false;
         return;
       }
-      if (col1.toLowerCase() === "points") return; // pomin nagłówek kolumny danych
+      if (col1.toLowerCase() === "points" || col1.toLowerCase().includes("normy")) return;
 
       const item = document.createElement("div");
       item.className = "player-list-item";
@@ -206,6 +203,7 @@ function showTab(name, rows) {
     listDiv.className = "player-list";
 
     dataRows.forEach((row) => {
+      if (!row || row.length < 3) return;
       const item = document.createElement("div");
       item.className = "player-list-item";
 
@@ -231,7 +229,9 @@ function showTab(name, rows) {
 
   // --- 4. ZAKŁADKA: PODSUMOWANIE ---
   const headers = rows[0];
-  const sortedRows = rows.slice(1).sort((a, b) => Number(b[2] || 0) - Number(a[2] || 0));
+  if (!headers) return;
+  
+  const sortedRows = rows.slice(1).filter(r => r && r[2]).sort((a, b) => Number(b[2] || 0) - Number(a[2] || 0));
 
   const listDiv = document.createElement("div");
   listDiv.className = "player-list";
@@ -252,7 +252,7 @@ function showTab(name, rows) {
   content.appendChild(listDiv);
 
   rows.slice(1).forEach(row => {
-    if (!row || row.length < 3) return; 
+    if (!row || row.length < 3 || !row[0]) return; 
     
     const card = document.createElement("div");
     card.className = "player-card";
@@ -282,3 +282,6 @@ function showTab(name, rows) {
       else if (header.includes("Ancients")) type = "ancients";
 
       const short = header
+        .replace("Crypt__", "C")
+        .replace("rare Crypt__", "RC")
+        .replace("Vault", "V")
