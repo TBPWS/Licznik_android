@@ -1,14 +1,13 @@
 // === KONFIGURACJA LINKÓW Z ARKUSZA GOOGLE ============================
 // Wklej tutaj wygenerowane linki CSV dla poszczególnych zakładek:
 const URL_PODSUMOWANIE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv";
-const URL_NOWA_ZAKLADKA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv";
+const URL_RANKING = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv";
 // =====================================================================
 
 let refreshInterval = null;
-// Obiekt, w którym będziemy przechowywać przetworzone wiersze dla każdej z kart
 let globalData = {
   "Podsumowanie": [],
-  "Nowa Zakładka": [], // Możesz zmienić tę nazwę na taką, jaka ma być na przycisku
+  "Ranking": [],
   "Legenda": []
 };
 
@@ -37,26 +36,24 @@ function parseCSV(text) {
 }
 
 function loadData() {
-  if (URL_PODSUMOWANIE.includes("https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv") || URL_NOWA_ZAKLADKA.includes("https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv")) {
+  if (URL_PODSUMOWANIE.includes("TUTAJ_WKLEJ") || URL_RANKING.includes("TUTAJ_WKLEJ")) {
     const content = document.getElementById("content");
     if (content) {
       content.innerHTML = `<div style="color: #ff8c00; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-        <strong>Konfiguracja wymagana:</strong> Uupełnij oba linki CSV w pliku app.js!
+        <strong>Konfiguracja wymagana:</strong> Uzupełnij oba linki CSV w pliku app.js!
       </div>`;
     }
     return;
   }
 
-  // Pobieramy oba arkusze jednocześnie za pomocą Promise.all
   Promise.all([
     fetch(URL_PODSUMOWANIE).then(r => { if (!r.ok) throw new Error("Błąd Podsumowania"); return r.text(); }),
-    fetch(URL_NOWA_ZAKLADKA).then(r => { if (!r.ok) throw new Error("Błąd Nowej Zakładki"); return r.text(); })
+    fetch(URL_RANKING).then(r => { if (!r.ok) throw new Error("Błąd zakładki Ranking"); return r.text(); })
   ])
-  .then(([csvPodsumowanie, csvNowaZakladka]) => {
+  .then(([csvPodsumowanie, csvRanking]) => {
     globalData["Podsumowanie"] = parseCSV(csvPodsumowanie);
-    globalData["Nowa Zakładka"] = parseCSV(csvNowaZakladka); // Nazwa musi być spójna z przyciskiem tab
+    globalData["Ranking"] = parseCSV(csvRanking);
 
-    // Generujemy przyciski zakładek tylko raz na początku lub odświeżamy widok
     renderTabs();
     updateTimestamp();
   })
@@ -74,14 +71,10 @@ function loadData() {
 
 function renderTabs() {
   const tabs = document.getElementById("tabs");
-  
-  // Zapamiętujemy, która zakładka była aktywna przed odświeżeniem danych
   const activeTabBtn = document.querySelector(".tab-btn.active");
   const activeTabName = activeTabBtn ? activeTabBtn.dataset.name : "Podsumowanie";
 
   tabs.innerHTML = "";
-
-  // Definiujemy listę kart, które mają się pojawić w menu
   const tabsList = ["Podsumowanie", "Ranking", "Legenda"];
 
   tabsList.forEach(name => {
@@ -100,7 +93,6 @@ function renderTabs() {
     tabs.appendChild(btn);
   });
 
-  // Wymuszamy kliknięcie i załadowanie zawartości aktualnej zakładki
   const currentActiveBtn = document.querySelector(`.tab-btn[data-name="${activeTabName}"]`);
   if (currentActiveBtn) {
     showTab(activeTabName, globalData[activeTabName]);
@@ -111,7 +103,7 @@ function showTab(name, rows) {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  // --- LEGENDA ---
+  // --- 1. LEGENDA ---
   if (name === "Legenda") {
     const legend = document.createElement("div");
     legend.className = "legend";
@@ -136,12 +128,51 @@ function showTab(name, rows) {
 
   if (!rows || rows.length === 0) return;
 
-  // --- PRZETWARZANIE WIERZY (DLA OBU ARKUSZY LOGIKA JEST TA SAMA) ---
+  // --- 2. NOWA ZAKŁADKA: RANKING ---
+  if (name === "Ranking") {
+    // Pomijamy pierwszy wiersz tekstowy ("Ranking G9") i szukamy wiersza z nagłówkami
+    let headerIndex = 0;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i] && rows[i].includes("Gracz")) {
+        headerIndex = i;
+        break;
+      }
+    }
+
+    const dataRows = rows.slice(headerIndex + 1).filter(r => r && r[2]); // Filtrujemy wiersze, które mają nazwę gracza
+
+    const listDiv = document.createElement("div");
+    listDiv.className = "player-list";
+
+    dataRows.forEach((row) => {
+      const item = document.createElement("div");
+      item.className = "player-list-item";
+
+      const miejsce = row[0] || "";
+      const medal = row[1] || "";
+      const gracz = row[2] || "";
+      const poziom = row[3] || "";
+      const punkty = row[4] || "0";
+      const norma = row[5] || "0";
+      const razem = row[6] || "0";
+
+      // Dodanie klas dla TOP 3 na podstawie miejsca
+      if (miejsce == "1") item.classList.add("top1");
+      if (miejsce == "2") item.classList.add("top2");
+      if (miejsce == "3") item.classList.add("top3");
+
+      item.textContent = `${miejsce}. ${medal} ${gracz} (${poziom}) — Punkty: ${punkty} — Norma: ${norma}% — Skrzynie: ${razem}`;
+      listDiv.appendChild(item);
+    });
+
+    content.appendChild(listDiv);
+    return;
+  }
+
+  // --- 3. ORYGINALNA ZAKŁADKA: PODSUMOWANIE ---
   const headers = rows[0];
-  // Sortowanie graczy według punktów (indeks 2)
   const sortedRows = rows.slice(1).sort((a, b) => Number(b[2] || 0) - Number(a[2] || 0));
 
-  // --- LISTA GRACZY (RANKING) ---
   const listDiv = document.createElement("div");
   listDiv.className = "player-list";
 
@@ -160,7 +191,6 @@ function showTab(name, rows) {
 
   content.appendChild(listDiv);
 
-  // --- KARTY GRACZY ---
   rows.slice(1).forEach(row => {
     if (!row || row.length < 3) return; 
     
