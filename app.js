@@ -1,11 +1,16 @@
-// === KONFIGURACJA ===================================================
-// 1. W Arkuszu Google wejdź w: Plik -> Udostępnij -> Opublikuj w internecie
-// 2. Wybierz zakładkę "Podsumowanie" oraz format "Wartości rozdzielane przecinkami (.csv)"
-// 3. Kliknij Opublikuj i wklej wygenerowany link poniżej:
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv";
-// ====================================================================
+// === KONFIGURACJA LINKÓW Z ARKUSZA GOOGLE ============================
+// Wklej tutaj wygenerowane linki CSV dla poszczególnych zakładek:
+const URL_PODSUMOWANIE = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv";
+const URL_NOWA_ZAKLADKA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv";
+// =====================================================================
 
 let refreshInterval = null;
+// Obiekt, w którym będziemy przechowywać przetworzone wiersze dla każdej z kart
+let globalData = {
+  "Podsumowanie": [],
+  "Nowa Zakładka": [], // Możesz zmienić tę nazwę na taką, jaka ma być na przycisku
+  "Legenda": []
+};
 
 function updateTimestamp() {
   const now = new Date();
@@ -25,7 +30,6 @@ function parseCSV(text) {
   return lines
     .map(line => {
       if (!line.trim()) return null;
-      // Arkusze Google w zależności od języka używają przecinka lub średnika
       const delimiter = line.includes(";") ? ";" : ",";
       return line.split(delimiter).map(cell => cell.replace(/^"|"\$/g, '').trim());
     })
@@ -33,61 +37,74 @@ function parseCSV(text) {
 }
 
 function loadData() {
-  if (SHEET_CSV_URL === "TUTAJ_WKLEJ_SWOJ_LINK_Z_ARKUSZA_GOOGLE_CSV") {
+  if (URL_PODSUMOWANIE.includes("https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=0&single=true&output=csv") || URL_NOWA_ZAKLADKA.includes("https://docs.google.com/spreadsheets/d/e/2PACX-1vT04qgjfew9Fu4mR3zTP2TIbYaYMmhMQUfUhsHDPsxb2X0Ra4CjcZo6yqpD-fN3V16dG5zsFMexZKvO/pub?gid=1621614425&single=true&output=csv")) {
     const content = document.getElementById("content");
     if (content) {
       content.innerHTML = `<div style="color: #ff8c00; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-        <strong>Konfiguracja wymagana:</strong> Wklej wygenerowany link CSV z Arkusza Google w pliku app.js!
+        <strong>Konfiguracja wymagana:</strong> Uupełnij oba linki CSV w pliku app.js!
       </div>`;
     }
     return;
   }
 
-  fetch(SHEET_CSV_URL)
-    .then(r => {
-      if (!r.ok) throw new Error("Problem z pobraniem danych (Status: " + r.status + ")");
-      return r.text();
-    })
-    .then(csvText => {
-      const rows = parseCSV(csvText);
-      if (rows.length > 0) {
-        renderTabs(rows);
-        updateTimestamp();
-      }
-    })
-    .catch(error => {
-      console.error(error);
-      const content = document.getElementById("content");
-      if (content) {
-        content.innerHTML = `<div style="color: #ff3333; padding: 20px; background: #1c1c1c; border-radius: 8px;">
-          Błąd ładowania danych! Upewnij się, że arkusz jest prawidłowo opublikowany jako CSV.<br>
-          <small style="color: #aaa;">Szczegóły: ${error.message}</small>
-        </div>`;
-      }
-    });
+  // Pobieramy oba arkusze jednocześnie za pomocą Promise.all
+  Promise.all([
+    fetch(URL_PODSUMOWANIE).then(r => { if (!r.ok) throw new Error("Błąd Podsumowania"); return r.text(); }),
+    fetch(URL_NOWA_ZAKLADKA).then(r => { if (!r.ok) throw new Error("Błąd Nowej Zakładki"); return r.text(); })
+  ])
+  .then(([csvPodsumowanie, csvNowaZakladka]) => {
+    globalData["Podsumowanie"] = parseCSV(csvPodsumowanie);
+    globalData["Nowa Zakładka"] = parseCSV(csvNowaZakladka); // Nazwa musi być spójna z przyciskiem tab
+
+    // Generujemy przyciski zakładek tylko raz na początku lub odświeżamy widok
+    renderTabs();
+    updateTimestamp();
+  })
+  .catch(error => {
+    console.error(error);
+    const content = document.getElementById("content");
+    if (content) {
+      content.innerHTML = `<div style="color: #ff3333; padding: 20px; background: #1c1c1c; border-radius: 8px;">
+        Błąd ładowania danych! Upewnij się, że oba arkusze są poprawnie opublikowane jako CSV.<br>
+        <small style="color: #aaa;">Szczegóły: ${error.message}</small>
+      </div>`;
+    }
+  });
 }
 
-function renderTabs(rows) {
+function renderTabs() {
   const tabs = document.getElementById("tabs");
+  
+  // Zapamiętujemy, która zakładka była aktywna przed odświeżeniem danych
+  const activeTabBtn = document.querySelector(".tab-btn.active");
+  const activeTabName = activeTabBtn ? activeTabBtn.dataset.name : "Podsumowanie";
+
   tabs.innerHTML = "";
 
-  // Ponieważ ciągniemy dane bezpośrednio z zakładki "Podsumowanie", stworzymy sztywne karty dla tej zakładki oraz Legendy
-  const tabsList = ["Podsumowanie", "Legenda"];
+  // Definiujemy listę kart, które mają się pojawić w menu
+  const tabsList = ["Podsumowanie", "Nowa Zakładka", "Legenda"];
 
   tabsList.forEach(name => {
     const btn = document.createElement("button");
     btn.className = "tab-btn";
     btn.textContent = name;
+    btn.dataset.name = name;
+    
+    if (name === activeTabName) btn.classList.add("active");
+
     btn.addEventListener("click", () => {
       document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
-      showTab(name, rows);
+      showTab(name, globalData[name]);
     });
     tabs.appendChild(btn);
   });
 
-  const firstBtn = document.querySelector(".tab-btn");
-  if (firstBtn) firstBtn.click();
+  // Wymuszamy kliknięcie i załadowanie zawartości aktualnej zakładki
+  const currentActiveBtn = document.querySelector(`.tab-btn[data-name="${activeTabName}"]`);
+  if (currentActiveBtn) {
+    showTab(activeTabName, globalData[activeTabName]);
+  }
 }
 
 function showTab(name, rows) {
@@ -117,9 +134,11 @@ function showTab(name, rows) {
     return;
   }
 
-  // --- PRZETWARZANIE PODSUMOWANIA ---
+  if (!rows || rows.length === 0) return;
+
+  // --- PRZETWARZANIE WIERZY (DLA OBU ARKUSZY LOGIKA JEST TA SAMA) ---
   const headers = rows[0];
-  // Sortowanie graczy według punktów (kolumna 3, indeks 2) od największej do najmniejszej
+  // Sortowanie graczy według punktów (indeks 2)
   const sortedRows = rows.slice(1).sort((a, b) => Number(b[2] || 0) - Number(a[2] || 0));
 
   // --- LISTA GRACZY (RANKING) ---
@@ -127,7 +146,7 @@ function showTab(name, rows) {
   listDiv.className = "player-list";
 
   sortedRows.forEach((row, index) => {
-    if (!row[0]) return; // Pomiń puste wiersze
+    if (!row || row.length < 3) return;
     const item = document.createElement("div");
     item.className = "player-list-item";
 
@@ -143,7 +162,7 @@ function showTab(name, rows) {
 
   // --- KARTY GRACZY ---
   rows.slice(1).forEach(row => {
-    if (!row[0]) return; 
+    if (!row || row.length < 3) return; 
     
     const card = document.createElement("div");
     card.className = "player-card";
@@ -195,7 +214,6 @@ function showTab(name, rows) {
   });
 }
 
-// Obsługa auto-refreshu (30 sekund)
 function startAutoRefresh() {
   if (refreshInterval) return;
   refreshInterval = setInterval(() => {
