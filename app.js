@@ -82,7 +82,7 @@ function renderTabs() {
   tabs.innerHTML = "";
 
   // Definiujemy listę kart, które mają się pojawić w menu
-  const tabsList = ["Podsumowanie", "Nowa Zakładka", "Legenda"];
+  const tabsList = ["Podsumowanie", "Ranking", "Legenda"];
 
   tabsList.forEach(name => {
     const btn = document.createElement("button");
