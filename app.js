@@ -260,7 +260,7 @@ function startAutoRefresh() {
   if (refreshInterval) return;
   refreshInterval = setInterval(() => {
     if (document.visibilityState === "visible") loadTabContent(currentTab);
-  }, 120000);
+  }, 600000);
 }
 
 renderTabs();
